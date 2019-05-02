@@ -2,7 +2,10 @@ package com.example.yohan.readhub1;
 
 import android.annotation.SuppressLint;
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.Intent;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.support.annotation.NonNull;
 import android.support.v4.widget.SwipeRefreshLayout;
@@ -68,67 +71,109 @@ public class MainActivity extends AppCompatActivity implements RecycleViewAdapte
 
         linearLayoutManager = new LinearLayoutManager(MainActivity.this,LinearLayoutManager.VERTICAL,false);
         recyclerView.setLayoutManager(linearLayoutManager);
-
         list = new ArrayList<Model>();
         mDatabase = FirebaseDatabase.getInstance().getReference("Articles");
-        mDatabase.keepSynced(true);
 
 
 
+        if(haveNetwork(getApplicationContext())){
+
+            progressDialog = new ProgressDialog(MainActivity.this);
+            progressDialog.setTitle("Recent Post");
+            progressDialog.setMessage("Loading");
+            progressDialog.show();
+
+            new GetJson().execute();
+
+            list.clear();
+            mDatabase.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+
+                    progressDialog.dismiss();
+
+                    list.clear();
+                    for (DataSnapshot data : dataSnapshot.getChildren()){
 
 
-        progressDialog = new ProgressDialog(MainActivity.this);
-        progressDialog.setTitle("Recent Post");
-        progressDialog.setMessage("Loading");
-        progressDialog.show();
+                        Model model = data.getValue(Model.class);
+                        list.add(model);
+                        //   adapter.notifyDataSetChanged();
 
 
-        new GetJson().execute();
+                    }
+                    adapter = new RecycleViewAdapter(list,getApplicationContext());
+                    // adapter.notifyDataSetChanged();
+                    //list.clear();
 
-        list.clear();
-        mDatabase.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-
-                progressDialog.dismiss();
-
-                list.clear();
-                for (DataSnapshot data : dataSnapshot.getChildren()){
+                    recyclerView.setAdapter(adapter);
+                    adapter.SetOnItemClickListener(MainActivity.this);
 
 
-                    Model model = data.getValue(Model.class);
-                    list.add(model);
-                    //   adapter.notifyDataSetChanged();
 
 
                 }
-                adapter = new RecycleViewAdapter(list,getApplicationContext());
-                // adapter.notifyDataSetChanged();
-                //list.clear();
 
-                recyclerView.setAdapter(adapter);
-                adapter.SetOnItemClickListener(MainActivity.this);
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
 
+                }
 
+            });
+           // mDatabase.keepSynced(true);
+            Toast.makeText(MainActivity.this,"done",Toast.LENGTH_LONG).show();
 
+        }else {
 
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError databaseError) {
-
-            }
-
-        });
-
-        Toast.makeText(MainActivity.this,"done",Toast.LENGTH_LONG).show();
-     //   list.clear();
+            progressDialog = new ProgressDialog(MainActivity.this);
+            progressDialog.setTitle("Recent Post");
+            progressDialog.setMessage("Loading");
+            progressDialog.show();
 
 
-        //call retrofit
-       // getRetrofit();
+            new GetJson().execute();
 
-      //  new GetJson().execute();
+            list.clear();
+            mDatabase.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+
+                    progressDialog.dismiss();
+
+                    list.clear();
+                    for (DataSnapshot data : dataSnapshot.getChildren()){
+
+
+                        Model model = data.getValue(Model.class);
+                        list.add(model);
+                        //   adapter.notifyDataSetChanged();
+
+
+                    }
+                    adapter = new RecycleViewAdapter(list,getApplicationContext());
+                    // adapter.notifyDataSetChanged();
+                    //list.clear();
+
+                    recyclerView.setAdapter(adapter);
+                    adapter.SetOnItemClickListener(MainActivity.this);
+
+
+
+
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                }
+
+            });
+            mDatabase.keepSynced(true);
+            Toast.makeText(MainActivity.this," offline done",Toast.LENGTH_LONG).show();
+        }
+
+
+
 
 
 
@@ -137,12 +182,6 @@ public class MainActivity extends AppCompatActivity implements RecycleViewAdapte
     }
 
 
-//    @Override
-//    protected void onStart() {
-//        super.onStart();
-//
-//
-//    }
 
     public class GetJson extends AsyncTask<Void,Void,Void>{
 
@@ -279,4 +318,24 @@ public class MainActivity extends AppCompatActivity implements RecycleViewAdapte
         startActivity(i);
 
     }
+
+    private boolean haveNetwork(Context context){
+        boolean have_WIFI = false;
+        boolean have_MobileData = false;
+
+        ConnectivityManager connectivityManager = (ConnectivityManager)getSystemService(CONNECTIVITY_SERVICE);
+        // NetworkInfo [] networkInfos = connectivityManager.getAllNetworkInfo();
+        if (connectivityManager != null)
+        {
+            NetworkInfo[] info = connectivityManager.getAllNetworkInfo();
+            if (info != null)
+                for (int i = 0; i < info.length; i++)
+                    if (info[i].getState() == NetworkInfo.State.CONNECTED)
+                    {
+                        return true;
+                    }
+        }
+        return false;
+    }
+
 }
